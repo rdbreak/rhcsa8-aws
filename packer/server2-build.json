@@ -1,0 +1,43 @@
+{
+    "variables": {
+        "ami_name": "server2-rhsca8-ami",
+        "aws_region": "us-west-1",
+        "ssh_username": "centos"
+    },
+    "builders": [{
+        "type": "amazon-ebs",
+        "region": "{{user `aws_region`}}",
+        "instance_type": "t2.micro",
+        "force_deregister": "true",
+        "ssh_username": "{{user `ssh_username`}}",
+        "communicator": "ssh",
+        "ssh_keypair_name": "rhcsa8env",
+        "ssh_private_key_file": "~/rhcsa8env.pem",
+        "associate_public_ip_address": true,
+        "ami_name": "{{user `ami_name`}}",
+        "source_ami_filter": {
+            "filters": {
+                "virtualization-type": "hvm",
+                "name": "rhcsa8-env-ami 2020*",
+                "root-device-type": "ebs"
+            },
+            "owners": ["339300228577"],
+            "most_recent": true
+        },
+        "run_tags": {
+            "Name": "rhcsa8env-server2"
+        }
+    }],
+    "provisioners": [{
+            "type": "shell",
+            "inline": "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do echo 'Waiting for cloud-init...'; sleep 1; done"
+        },
+        {
+            "type": "shell",
+            "script": "./packer/provisioners/scripts/bootstrap.sh"
+        },
+        {
+            "type": "ansible",
+            "playbook_file": "./packer/provisioners/ansible/server2-setup.yml"
+        }]
+}

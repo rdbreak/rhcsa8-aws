@@ -1,0 +1,85 @@
+---
+- name: Setting Up Server 2
+  hosts: 'all'
+  strategy: free
+  ignore_errors: true
+  tasks:
+  - name: Setting Up Python
+    file:
+      src: /usr/bin/python3.6
+      path: /usr/bin/python
+      state: link
+  - name: Update all packages
+    yum:
+      name: "*"
+      state: latest
+  - name: Reloading Network
+    service: 
+      name: NetworkManager
+      state: restarted 
+  - name: Starting services
+    service:
+      name: "{{ item }}"
+      state: started
+      enabled: yes
+    with_items:
+      - firewalld
+      - httpd
+  - name: Enabling Firewall Services
+    firewalld: 
+      service: "{{ item }}"
+      immediate: yes
+      permanent: yes
+      state: enabled
+    with_items:
+      - http 
+      - https 
+      - ntp 
+      - dns
+      - ftp
+  - name: Reloading Firewall
+    service: name=firewalld state=restarted
+  - name: Enabling IPV6
+    sysctl:
+      name: "{{ item }}"
+      value: '0'
+      sysctl_set: yes
+    with_items:
+      - net.ipv6.conf.lo.disable_ipv6
+      - net.ipv6.conf.all.disable_ipv6
+  - name: Creating Welcome Message
+    file:
+      path: /etc/profile.d/welcome.sh
+      state: touch
+      mode: 0755
+  - name: Building Welcome Message
+    blockinfile:
+      dest: /etc/profile.d/welcome.sh
+      mode: 0644
+      block: |
+         #!/bin/bash
+         #
+         echo -e '
+         #          _     _        _        _         _           _          _   _         _       
+         #         / /\  /\ \     /\_\     / /\      /\ \        /\ \       /\_\/\_\ _   /\ \      
+         #        / /  \ \ \ \   / / /    / /  \     \_\ \      /  \ \     / / / / //\_\/  \ \     
+         #       / / /\ \_\ \ \_/ / /    / / /\ \__  /\__ \    / /\ \ \   /\ \/ \ \/ / / /\ \ \    
+         #      / / /\ \___\ \___/ /    / / /\ \___\/ /_ \ \  / / /\ \_\ /  \____\__/ /\/_/\ \ \   
+         #      \ \ \ \/___/\ \ \_/     \ \ \ \/___/ / /\ \ \/ /_/_ \/_// /\/________/     / / /   
+         #       \ \ \       \ \ \       \ \ \    / / /  \/_/ /____/\  / / /\/_// / /     / / /    
+         #   _    \ \ \       \ \ \  _    \ \ \  / / /     / /\____\/ / / /    / / /     / / /  _  
+         #  /_/\__/ / /        \ \ \/_/\__/ / / / / /     / / /______/ / /    / / /     / / /_/\_\ 
+         #  \ \/___/ /          \ \_\ \/___/ / /_/ /     / / /_______\/_/    / / /     / /_____/ / 
+         #   \_____\/            \/_/\_____\/  \_\/      \/__________/       \/_/      \________/  
+         #                                                                                         
+         '"#
+         # You are logged into \"`hostname`\" as the \"`whoami`\" account.
+         # This system is running `cat /etc/redhat-release`
+         #
+         # For root - use \`sudo\` or \`sudo su -\`
+         #
+         "
+  - name: Adjusting Services and Rebooting
+    selinux:
+      state: permissive
+      policy: targeted
